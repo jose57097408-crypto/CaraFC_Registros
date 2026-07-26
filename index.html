@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CARA FC - Registro de Jugadores</title>
+    <!-- Aquí colocas la línea del icono -->
+    <link rel="icon" href="https://ui-avatars.com/api/?name=⚽&background=1E90FF&color=fff&size=64&bold=true">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Librerías para exportar a PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f0f4f8; 
+        }
+        /* Scrollbar personalizado */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        /* Animaciones suaves */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col">
+
+    <!-- Barra de Navegación Superior -->
+    <nav class="bg-gradient-to-r from-blue-900 to-blue-700 text-white p-4 shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-white text-blue-900 p-2 rounded-full h-10 w-10 flex items-center justify-center">
+                    <i class="fas fa-futbol text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold tracking-wide">CARA FC</h1>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                <div class="relative w-full sm:w-auto">
+                    <span class="absolute left-3 top-2 text-gray-500"><i class="fas fa-filter"></i></span>
+                    <select id="categoryFilter" class="w-full sm:w-auto pl-9 pr-4 py-2 rounded-lg text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm cursor-pointer">
+                        <option value="All">Todas las Categorías</option>
+                    </select>
+                </div>
+                <button onclick="openModal()" class="w-full sm:w-auto bg-green-500 hover:bg-green-400 transition-colors px-5 py-2 rounded-lg text-white font-semibold shadow-md flex items-center justify-center gap-2">
+                    <i class="fas fa-user-plus"></i> Nuevo Registro
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Barra de Herramientas (Exportar) -->
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto p-3 flex flex-wrap justify-end gap-3 items-center">
+            <span class="text-sm text-gray-500 self-center hidden sm:block mr-auto">Gestión y control del listado de jugadores</span>
+            
+            <!-- Botones de Importar/Exportar Datos -->
+            <div class="flex gap-2 border-r pr-3 mr-1">
+                <button onclick="exportDataJSON()" class="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-200 transition-colors px-3 py-1.5 rounded-md flex items-center gap-2 text-sm font-semibold" title="Exportar Copia de Seguridad">
+                    <i class="fas fa-download"></i> Respaldar
+                </button>
+                <label class="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-200 transition-colors px-3 py-1.5 rounded-md flex items-center gap-2 text-sm font-semibold cursor-pointer" title="Importar Copia de Seguridad">
+                    <i class="fas fa-upload"></i> Restaurar
+                    <input type="file" id="importDataFile" accept=".json" class="hidden" onchange="importDataJSON(event)">
+                </label>
+            </div>
+
+            <button onclick="exportListPDF()" class="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 transition-colors px-4 py-1.5 rounded-md flex items-center gap-2 text-sm font-semibold">
+                <i class="fas fa-file-pdf"></i> Lista a PDF
+            </button>
+            <button onclick="exportListExcel()" class="bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border border-emerald-200 transition-colors px-4 py-1.5 rounded-md flex items-center gap-2 text-sm font-semibold">
+                <i class="fas fa-file-excel"></i> Lista a Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal de Tarjetas -->
+    <main class="flex-grow max-w-7xl mx-auto p-4 w-full">
+        <div id="playersGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <!-- Las tarjetas de jugadores se renderizarán aquí -->
+        </div>
+    </main>
+
+    <!-- Modal de Registro/Edición de Jugador -->
+    <div id="playerModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 z-50 flex justify-center items-center p-4">
+       <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto fade-in flex flex-col">
+          
+          <div class="bg-blue-900 text-white p-4 rounded-t-xl flex justify-between items-center sticky top-0 z-10">
+              <h2 id="modalTitle" class="text-xl font-bold">Registrar Nuevo Jugador</h2>
+              <button onclick="closeModal()" class="text-white hover:text-red-300 text-2xl leading-none">&times;</button>
+          </div>
+          
+          <form id="playerForm" class="p-6 space-y-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <!-- Información Personal -->
+                  <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1">Nombres *</label>
+                      <input type="text" id="nombre" required class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                  </div>
+                  <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1">Apellidos *</label>
+                      <input type="text" id="apellido" required class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                  </div>
+                  <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1">Cédula / ID *</label>
+                      <input type="text" id="cedula" required class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                  </div>
+                  <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1">Fecha de Nacimiento *</label>
+                      <input type="date" id="fechaNacimiento" required onchange="updateAgeAndCategory()" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                  </div>
+                  <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1">Edad Actual</label>
+                      <input type="number" id="edad" readonly class="w-full border border-gray-200 bg-gray-100 rounded-lg p-2.5 text-gray-600 cursor-not-allowed">
+                  </div>
+                  <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1">Categoría (Por Año Nac.)</label>
+                      <input type="text" id="categoria" readonly class="w-full border border-gray-200 bg-blue-50 text-blue-800 font-bold rounded-lg p-2.5 cursor-not-allowed">
+                  </div>
+
+                  <!-- Estado de Pago (Gancho Mensual) -->
+                  <label class="col-span-1 md:col-span-2 flex items-center justify-between mt-2 p-4 border border-gray-200 rounded-xl bg-gray-50 shadow-sm cursor-pointer hover:bg-gray-100 transition-colors">
+                      <div class="flex items-center gap-3">
+                          <div class="bg-green-100 text-green-600 p-2 rounded-full">
+                              <i class="fas fa-money-bill-wave w-5 h-5 flex items-center justify-center"></i>
+                          </div>
+                          <div>
+                              <h4 class="font-bold text-gray-800 text-sm">Estado de Pago</h4>
+                              <p class="text-xs text-gray-500">Marcar si el jugador pagó la cuota de <b id="mesActualTexto" class="capitalize text-blue-600"></b></p>
+                          </div>
+                      </div>
+                      <input type="checkbox" id="estadoPago" class="w-6 h-6 text-green-600 bg-white border-gray-300 rounded focus:ring-green-500 cursor-pointer accent-green-600">
+                  </label>
+
+                  <!-- Sección de Fotografías -->
+                  <div class="col-span-1 md:col-span-2 border-t pt-4 mt-2">
+                      <h3 class="font-bold text-gray-800 mb-3"><i class="fas fa-camera mr-2"></i>Fotografías y Documentos</h3>
+                  </div>
+
+                  <!-- Foto Jugador -->
+                  <div class="col-span-1 md:col-span-2">
+                      <label class="block text-sm font-semibold text-gray-700 mb-1">Foto del Jugador</label>
+                      <input type="file" id="fotoJugador" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                      <div id="containerJugador" class="hidden mt-3 relative inline-block">
+                          <img id="previewJugador" class="h-32 w-32 object-cover rounded-lg border-2 border-gray-200 shadow-sm">
+                          <button type="button" onclick="removePhoto('jugador')" class="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow">
+                              <i class="fas fa-times text-xs"></i>
+                          </button>
+                      </div>
+                  </div>
+
+                  <!-- Foto Cédula Frente -->
+                  <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1">Cédula (Parte Frontal)</label>
+                      <input type="file" id="fotoCedulaFrente" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer">
+                      <div id="containerFrente" class="hidden mt-3 relative inline-block">
+                          <img id="previewFrente" class="h-24 w-auto object-contain rounded-lg border border-gray-300">
+                          <button type="button" onclick="removePhoto('frente')" class="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow">
+                              <i class="fas fa-times text-xs"></i>
+                          </button>
+                      </div>
+                  </div>
+
+                  <!-- Foto Cédula Atrás -->
+                  <div>
+                      <label class="block text-sm font-semibold text-gray-700 mb-1">Cédula (Parte Trasera)</label>
+                      <input type="file" id="fotoCedulaAtras" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer">
+                      <div id="containerAtras" class="hidden mt-3 relative inline-block">
+                          <img id="previewAtras" class="h-24 w-auto object-contain rounded-lg border border-gray-300">
+                          <button type="button" onclick="removePhoto('atras')" class="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow">
+                              <i class="fas fa-times text-xs"></i>
+                          </button>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Botones del Formulario -->
+              <div class="flex justify-end gap-3 border-t pt-4">
+                  <button type="button" onclick="closeModal()" class="px-5 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition">Cancelar</button>
+                  <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-md transition">Guardar Jugador</button>
+              </div>
+          </form>
+       </div>
+    </div>
+
+    <!-- Modal de Confirmación de Eliminación -->
+    <div id="confirmModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 z-[60] flex justify-center items-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 text-center fade-in">
+            <div class="text-red-500 text-5xl mb-4"><i class="fas fa-exclamation-circle"></i></div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">¿Eliminar Jugador?</h3>
+            <p class="text-gray-600 mb-6">Esta acción no se puede deshacer. Los datos serán removidos permanentemente del listado.</p>
+            <div class="flex justify-center gap-3">
+                <button onclick="cancelDelete()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition">Cancelar</button>
+                <button onclick="confirmDelete()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition">Sí, Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Visor de Imágenes en Pantalla Completa -->
+    <div id="imageViewerModal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[80] flex justify-center items-start p-4 overflow-y-auto">
+        <button onclick="closeImageViewer()" class="fixed top-5 right-5 text-white hover:text-red-500 text-4xl z-[90] bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center transition-colors shadow-lg">&times;</button>
+        
+        <div class="flex flex-col items-center justify-start w-full py-10 space-y-12 max-w-5xl mt-8 fade-in">
+            <h3 id="viewerTitle" class="text-white text-3xl font-bold mb-2 text-center drop-shadow-md"></h3>
+            
+            <div class="w-full flex flex-col items-center">
+                <span class="text-gray-200 mb-3 font-semibold text-sm tracking-wider uppercase bg-gray-800 px-4 py-1.5 rounded-full shadow-md"><i class="fas fa-user-circle mr-2"></i>Foto del Jugador</span>
+                <img id="viewerFotoJugador" class="w-auto max-h-[85vh] object-contain rounded-xl border-2 border-gray-700 shadow-2xl bg-gray-900">
+            </div>
+            
+            <div class="w-full flex flex-col items-center">
+                <span class="text-gray-200 mb-3 font-semibold text-sm tracking-wider uppercase bg-gray-800 px-4 py-1.5 rounded-full shadow-md"><i class="fas fa-id-card mr-2"></i>Cédula (Frontal)</span>
+                <img id="viewerFrente" class="w-auto max-h-[85vh] object-contain rounded-xl border-2 border-gray-700 shadow-2xl bg-gray-900">
+            </div>
+            
+            <div class="w-full flex flex-col items-center">
+                <span class="text-gray-200 mb-3 font-semibold text-sm tracking-wider uppercase bg-gray-800 px-4 py-1.5 rounded-full shadow-md"><i class="fas fa-id-card mr-2"></i>Cédula (Trasera)</span>
+                <img id="viewerAtras" class="w-auto max-h-[85vh] object-contain rounded-xl border-2 border-gray-700 shadow-2xl bg-gray-900">
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor para Notificaciones Toast -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-[70] flex flex-col gap-2"></div>
+
+    <script>
+        // --- ESTADO DE LA APLICACIÓN ---
+        const categories = ['Sub-6', 'Sub-8', 'Sub-10', 'Sub-12', 'Sub-14', 'Sub-16', 'Sub-18', 'Mayor'];
+        let currentFilter = 'All';
+        let editId = null;
+        let playerToDelete = null;
+        let currentPhotos = { jugador: '', frente: '', atras: '' };
+        
+        // Cargar datos guardados en el navegador
+        let players = JSON.parse(localStorage.getItem('carafc_players')) || [];
+
+        // --- FUNCIONES DE FECHA Y MES ACTUAL ---
+        function getCurrentMonthStr() {
+            const d = new Date();
+            // Retorna formato "YYYY-MM" (ej. "2026-07")
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        // Revisar si los pagos expiraron al empezar un nuevo mes
+        function checkPaymentResets() {
+            const currentMonthStr = getCurrentMonthStr();
+            let changed = false;
+            
+            players.forEach(p => {
+                // Si el jugador estaba marcado como pagado, pero su mes de pago no es el actual
+                if (p.pago && p.pagoMes !== currentMonthStr) {
+                    p.pago = false;
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                saveToLocalStorage();
+            }
+        }
+
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('carafc_players', JSON.stringify(players));
+            } catch (e) {
+                console.error("Error de almacenamiento:", e);
+                showToast('Error al guardar los datos localmente.', 'error');
+            }
+        }
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Revisar y reiniciar pagos mensuales si corresponde
+            checkPaymentResets();
+            document.addEventListener('DOMContentLoaded', () => {
+                // (Tu código actual que ya está aquí dentro...)
+                checkPaymentResets();
+
+                const filterSelect = document.getElementById('categoryFilter');
+                categories.forEach(cat => {
+                    filterSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+
+                setupFileListener('fotoJugador', 'previewJugador', 'containerJugador', 'jugador');
+                setupFileListener('fotoCedulaFrente', 'previewFrente', 'containerFrente', 'frente');
+                setupFileListener('fotoCedulaAtras', 'previewAtras', 'containerAtras', 'atras');
+
+                filterSelect.addEventListener('change', (e) => {
+                    currentFilter = e.target.value;
+                    renderPlayers();
+                });
+
+                const dateStrES = new Date().toLocaleString('es-ES', { month: 'long' });
+                document.getElementById('mesActualTexto').innerText = dateStrES;
+
+                renderPlayers();
+
+                // ---> AGREGA ESTA LÍNEA AQUÍ PARA QUE SEA AUTOMÁTICO <---
+                sincronizarDatosDeGitHub();
+            });
+
+            const filterSelect = document.getElementById('categoryFilter');
+            categories.forEach(cat => {
+                filterSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+            });
+
+            setupFileListener('fotoJugador', 'previewJugador', 'containerJugador', 'jugador');
+            setupFileListener('fotoCedulaFrente', 'previewFrente', 'containerFrente', 'frente');
+            setupFileListener('fotoCedulaAtras', 'previewAtras', 'containerAtras', 'atras');
+
+            filterSelect.addEventListener('change', (e) => {
+                currentFilter = e.target.value;
+                renderPlayers();
+            });
+
+            // Establecer el nombre del mes actual en el formulario de pago
+            const dateStrES = new Date().toLocaleString('es-ES', { month: 'long' });
+            document.getElementById('mesActualTexto').innerText = dateStrES;
+
+            renderPlayers();
+        });
+
+        // --- FUNCIONES DE UI ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-blue-600';
+            let icon = 'fa-info-circle';
+            if (type === 'error') { bgClass = 'bg-red-500'; icon = 'fa-times-circle'; }
+            else if (type === 'success') { bgClass = 'bg-green-500'; icon = 'fa-check-circle'; }
+            
+            toast.className = `${bgClass} text-white px-5 py-3 rounded-lg shadow-lg flex items-center gap-3 transition-all duration-300 transform translate-x-full opacity-0`;
+            toast.innerHTML = `<i class="fas ${icon} text-lg"></i> <span class="font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => { toast.classList.remove('translate-x-full', 'opacity-0'); }, 10);
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-x-full');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function renderPlayers() {
+            const grid = document.getElementById('playersGrid');
+            const filtered = currentFilter === 'All' ? players : players.filter(p => p.categoria === currentFilter);
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full flex flex-col items-center justify-center py-16 text-gray-400">
+                        <i class="fas fa-users-slash text-6xl mb-4 text-gray-300"></i>
+                        <h3 class="text-xl font-semibold text-gray-500">No hay jugadores registrados</h3>
+                        <p>Añade nuevos jugadores o cambia el filtro de categoría.</p>
+                    </div>`;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(p => {
+                const badgePago = p.pago 
+                    ? `<div class="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1"><i class="fas fa-check"></i> Pagado</div>`
+                    : `<div class="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1"><i class="fas fa-exclamation-triangle"></i> Pendiente</div>`;
+
+                return `
+                <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 border border-gray-100 overflow-hidden flex flex-col h-full relative">
+                    <div class="h-56 w-full bg-gray-200 relative group">
+                        <img src="${p.fotoJugador || 'https://placehold.co/400x400/e2e8f0/64748b?text=Sin+Foto'}" class="w-full h-full object-cover">
+                        
+                        <div class="absolute top-3 right-3 bg-blue-900 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
+                            ${p.categoria}
+                        </div>
+                        <div class="absolute top-3 left-3 flex flex-col gap-1">
+                            ${badgePago}
+                        </div>
+                    </div>
+                    <div class="p-5 flex-grow flex flex-col">
+                        <h3 class="text-lg font-bold text-gray-800 uppercase leading-tight mb-2">${p.nombre} ${p.apellido}</h3>
+                        <div class="text-sm text-gray-600 space-y-1 mb-4 flex-grow">
+                            <p><i class="fas fa-id-card w-5 text-gray-400"></i> ${p.cedula}</p>
+                            <p><i class="fas fa-calendar-alt w-5 text-gray-400"></i> ${p.fechaNacimiento}</p>
+                        </div>
+                        
+                        <div class="flex justify-between items-center border-t border-gray-100 pt-3">
+                            <div class="flex gap-2">
+                                <button onclick="exportPlayerPDF('${p.id}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg transition-colors flex items-center gap-1 text-sm font-semibold" title="Ficha PDF">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </button>
+                                <button onclick="viewPlayerPhotos('${p.id}')" class="text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-3 py-2 rounded-lg transition-colors flex items-center gap-1 text-sm font-semibold" title="Ver Fotos">
+                                    <i class="fas fa-expand"></i> Fotos
+                                </button>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="editPlayer('${p.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="promptDelete('${p.id}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Eliminar">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function viewPlayerPhotos(id) {
+            const player = players.find(p => p.id === id);
+            if (!player) return;
+
+            const defaultPhoto = 'https://placehold.co/800x800/1f2937/9ca3af?text=Sin+Foto';
+            const defaultID = 'https://placehold.co/800x500/1f2937/9ca3af?text=Sin+Documento';
+
+            document.getElementById('viewerTitle').innerText = `${player.nombre} ${player.apellido}`;
+            document.getElementById('viewerFotoJugador').src = player.fotoJugador || defaultPhoto;
+            document.getElementById('viewerFrente').src = player.fotoCedulaFrente || defaultID;
+            document.getElementById('viewerAtras').src = player.fotoCedulaAtras || defaultID;
+
+            document.getElementById('imageViewerModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; 
+        }
+
+        function closeImageViewer() {
+            document.getElementById('imageViewerModal').classList.add('hidden');
+            document.body.style.overflow = 'auto'; 
+        }
+
+        // --- LÓGICA DE EDADES Y CATEGORÍAS ---
+        
+        // Edad exacta del niño a fecha de hoy (solo para mostrar)
+        function calculateAge(dobStr) {
+            if (!dobStr) return 0;
+            const dob = new Date(dobStr);
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const m = today.getMonth() - dob.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) { age--; }
+            return Math.max(0, age);
+        }
+
+        // EDAD DEPORTIVA: Para fútbol base, la categoría se rige solo por la resta de años
+        function getSportsAge(dobStr) {
+            if (!dobStr) return 0;
+            const birthYear = new Date(dobStr).getFullYear();
+            const currentYear = new Date().getFullYear();
+            return currentYear - birthYear;
+        }
+
+        function determinarCategoria(edadDeportiva) {
+            if (edadDeportiva <= 6) return 'Sub-6';
+            if (edadDeportiva <= 8) return 'Sub-8';
+            if (edadDeportiva <= 10) return 'Sub-10';
+            if (edadDeportiva <= 12) return 'Sub-12';
+            if (edadDeportiva <= 14) return 'Sub-14';
+            if (edadDeportiva <= 16) return 'Sub-16';
+            if (edadDeportiva <= 18) return 'Sub-18';
+            return 'Mayor';
+        }
+
+        function updateAgeAndCategory() {
+            const dob = document.getElementById('fechaNacimiento').value;
+            if (dob) {
+                // Muestra la edad exacta del niño en el campo Edad
+                document.getElementById('edad').value = calculateAge(dob);
+                
+                // Calcula la categoría según el AÑO DE NACIMIENTO (Edad Deportiva)
+                const edadDeportiva = getSportsAge(dob);
+                document.getElementById('categoria').value = determinarCategoria(edadDeportiva);
+            } else {
+                document.getElementById('edad').value = '';
+                document.getElementById('categoria').value = '';
+            }
+        }
+
+        // --- IMÁGENES ---
+        function compressImage(file, callback) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 600; 
+                    const MAX_HEIGHT = 600;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                    } else {
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    callback(dataUrl);
+                };
+            };
+        }
+
+        function setupFileListener(inputId, previewId, containerId, photoKey) {
+            const input = document.getElementById(inputId);
+            input.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    compressImage(file, function(compressedDataUrl) {
+                        currentPhotos[photoKey] = compressedDataUrl;
+                        document.getElementById(previewId).src = compressedDataUrl;
+                        document.getElementById(containerId).classList.remove('hidden');
+                    });
+                }
+            });
+        }
+
+        function removePhoto(type) {
+            currentPhotos[type] = '';
+            let inputId = 'fotoJugador', prevId = 'previewJugador', contId = 'containerJugador';
+            if(type === 'frente') { inputId = 'fotoCedulaFrente'; prevId = 'previewFrente'; contId = 'containerFrente'; }
+            if(type === 'atras') { inputId = 'fotoCedulaAtras'; prevId = 'previewAtras'; contId = 'containerAtras'; }
+            
+            document.getElementById(inputId).value = '';
+            document.getElementById(prevId).src = '';
+            document.getElementById(contId).classList.add('hidden');
+        }
+
+        // --- FORMULARIO Y CRUD ---
+        function openModal() {
+            editId = null;
+            document.getElementById('playerForm').reset();
+            document.getElementById('estadoPago').checked = false; 
+            currentPhotos = { jugador: '', frente: '', atras: '' };
+            ['jugador', 'frente', 'atras'].forEach(type => removePhoto(type));
+            
+            document.getElementById('modalTitle').innerText = 'Registrar Nuevo Jugador';
+            document.getElementById('playerModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('playerModal').classList.add('hidden');
+        }
+
+        function editPlayer(id) {
+            const player = players.find(p => p.id === id);
+            if (!player) return;
+            
+            editId = player.id;
+            document.getElementById('modalTitle').innerText = 'Editar Datos del Jugador';
+            
+            document.getElementById('nombre').value = player.nombre;
+            document.getElementById('apellido').value = player.apellido;
+            document.getElementById('cedula').value = player.cedula;
+            document.getElementById('fechaNacimiento').value = player.fechaNacimiento;
+            document.getElementById('edad').value = player.edad;
+            document.getElementById('categoria').value = player.categoria;
+            
+            // Comprobar si el pago guardado pertenece a este mes
+            const currentMonthStr = getCurrentMonthStr();
+            document.getElementById('estadoPago').checked = (player.pago === true && player.pagoMes === currentMonthStr); 
+            
+            currentPhotos = { jugador: player.fotoJugador || '', frente: player.fotoCedulaFrente || '', atras: player.fotoCedulaAtras || '' };
+            
+            const setups = [
+                { key: 'jugador', prev: 'previewJugador', cont: 'containerJugador' },
+                { key: 'frente', prev: 'previewFrente', cont: 'containerFrente' },
+                { key: 'atras', prev: 'previewAtras', cont: 'containerAtras' }
+            ];
+            
+            setups.forEach(s => {
+                if (currentPhotos[s.key]) {
+                    document.getElementById(s.prev).src = currentPhotos[s.key];
+                    document.getElementById(s.cont).classList.remove('hidden');
+                } else {
+                    document.getElementById(s.cont).classList.add('hidden');
+                }
+            });
+            
+            document.getElementById('playerModal').classList.remove('hidden');
+        }
+
+        document.getElementById('playerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const isPaid = document.getElementById('estadoPago').checked;
+            
+            const playerData = {
+                id: editId || 'player_' + Date.now(),
+                nombre: document.getElementById('nombre').value.trim(),
+                apellido: document.getElementById('apellido').value.trim(),
+                cedula: document.getElementById('cedula').value.trim(),
+                fechaNacimiento: document.getElementById('fechaNacimiento').value,
+                edad: document.getElementById('edad').value,
+                categoria: document.getElementById('categoria').value,
+                pago: isPaid,
+                pagoMes: isPaid ? getCurrentMonthStr() : null, // Guardar el mes del pago
+                fotoJugador: currentPhotos.jugador,
+                fotoCedulaFrente: currentPhotos.frente,
+                fotoCedulaAtras: currentPhotos.atras
+            };
+            
+            if (editId) {
+                const index = players.findIndex(p => p.id === editId);
+                players[index] = playerData;
+                showToast('Jugador actualizado correctamente', 'success');
+            } else {
+                players.push(playerData);
+                showToast('Jugador registrado exitosamente', 'success');
+            }
+            
+            saveToLocalStorage(); 
+            closeModal();
+            renderPlayers();
+        });
+
+        // Eliminar
+        function promptDelete(id) {
+            playerToDelete = id;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+        function cancelDelete() {
+            playerToDelete = null;
+            document.getElementById('confirmModal').classList.add('hidden');
+        }
+        function confirmDelete() {
+            if (playerToDelete) {
+                players = players.filter(p => p.id !== playerToDelete);
+                saveToLocalStorage(); 
+                renderPlayers();
+                showToast('Jugador eliminado', 'success');
+                cancelDelete();
+            }
+        }
+
+        // --- IMPORTACIÓN / EXPORTACIÓN DE DATOS (JSON) ---
+        function exportDataJSON() {
+            if (players.length === 0) {
+                showToast('No hay datos para exportar', 'error');
+                return;
+            }
+            
+            try {
+                const dataStr = JSON.stringify(players);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                const date = new Date();
+                const dateString = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+                
+                a.download = `CARAFC_Respaldo_${dateString}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showToast('Copia de seguridad descargada exitosamente', 'success');
+            } catch (error) {
+                console.error("Error al exportar datos:", error);
+                showToast('Error al exportar los datos', 'error');
+            }
+        }
+
+        function importDataJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (!Array.isArray(importedData)) {
+                        throw new Error("El formato del archivo no es válido.");
+                    }
+                    if (confirm("¿Deseas reemplazar los datos actuales con los del archivo importado? \n\nAceptar: Reemplazar todo.\nCancelar: No hacer nada.")) {
+                        players = importedData;
+                        // Forzar una revisión de pagos si es copia antigua
+                        checkPaymentResets();
+                        saveToLocalStorage();
+                        renderPlayers();
+                        showToast('Datos importados correctamente', 'success');
+                    }
+                } catch (error) {
+                    console.error("Error al importar:", error);
+                    showToast('Error al leer el archivo. Formato inválido.', 'error');
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // --- EXPORTACIÓN PDF Y EXCEL ---
+        async function exportPlayerPDF(id) {
+            const player = players.find(p => p.id === id);
+            if (!player) return;
+
+            showToast('Generando Ficha PDF...', 'info');
+
+            const container = document.createElement('div');
+            container.style.width = '794px'; 
+            container.style.padding = '40px';
+            container.style.backgroundColor = '#ffffff';
+            container.style.position = 'fixed';
+            container.style.left = '-9999px';
+            container.style.top = '0';
+            container.style.fontFamily = 'sans-serif';
+            container.style.color = '#333';
+
+            const defaultPhoto = 'https://placehold.co/400x400/e2e8f0/64748b?text=Sin+Foto';
+            const defaultID = 'https://placehold.co/400x250/e2e8f0/475569?text=Sin+Documento';
+            
+            const colorPago = player.pago ? '#15803d' : '#b91c1c';
+            const bgPago = player.pago ? '#dcfce7' : '#fee2e2';
+            const textoPago = player.pago ? 'PAGADO ✓' : 'PENDIENTE ✗';
+
+            container.innerHTML = `
+                <div style="border: 6px solid #1e3a8a; border-radius: 15px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #e2e8f0; padding-bottom: 20px;">
+                        <h1 style="color: #1e3a8a; font-size: 38px; font-weight: 800; margin: 0; text-transform: uppercase;">CARA FC</h1>
+                        <h2 style="font-size: 24px; color: #64748b; margin: 10px 0 0 0; text-transform: uppercase; letter-spacing: 2px;">Ficha Oficial de Jugador</h2>
+                    </div>
+                    
+                    <div style="display: flex; gap: 40px; margin-bottom: 40px;">
+                        <div style="flex: 0 0 250px;">
+                            <img src="${player.fotoJugador || defaultPhoto}" style="width: 250px; height: 300px; object-fit: cover; border-radius: 12px; border: 3px solid #1e3a8a; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                            <div style="margin-bottom: 15px;">
+                                <span style="font-size: 14px; color: #64748b; text-transform: uppercase; font-weight: bold;">Nombre Completo</span>
+                                <div style="font-size: 26px; font-weight: bold; color: #1e293b;">${player.nombre} ${player.apellido}</div>
+                            </div>
+                            <div style="display: flex; gap: 40px; margin-bottom: 15px;">
+                                <div>
+                                    <span style="font-size: 14px; color: #64748b; text-transform: uppercase; font-weight: bold;">Identidad / Cédula</span>
+                                    <div style="font-size: 20px; color: #334155;">${player.cedula}</div>
+                                </div>
+                                <div>
+                                    <span style="font-size: 14px; color: #64748b; text-transform: uppercase; font-weight: bold;">Categoría</span>
+                                    <div style="font-size: 20px; font-weight: bold; color: #1e3a8a; background-color: #eff6ff; padding: 2px 10px; border-radius: 6px; display: inline-block;">${player.categoria}</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 40px; margin-bottom: 15px;">
+                                <div>
+                                    <span style="font-size: 14px; color: #64748b; text-transform: uppercase; font-weight: bold;">Fecha Nacimiento</span>
+                                    <div style="font-size: 18px; color: #334155;">${player.fechaNacimiento}</div>
+                                </div>
+                                <div>
+                                    <span style="font-size: 14px; color: #64748b; text-transform: uppercase; font-weight: bold;">Edad</span>
+                                    <div style="font-size: 18px; color: #334155;">${player.edad} años</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 40px;">
+                                <div>
+                                    <span style="font-size: 14px; color: #64748b; text-transform: uppercase; font-weight: bold;">Estado de Pago</span><br>
+                                    <div style="font-size: 18px; font-weight: bold; color: ${colorPago}; background-color: ${bgPago}; padding: 4px 12px; border-radius: 6px; display: inline-block; margin-top: 4px;">
+                                        ${textoPago}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 style="font-size: 20px; font-weight: bold; color: #1e3a8a; margin-bottom: 20px; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Documentos de Identidad</h3>
+                        <div style="display: flex; gap: 30px; justify-content: center;">
+                            <div style="text-align: center; flex: 1;">
+                                <div style="font-weight: bold; color: #64748b; margin-bottom: 10px; text-transform: uppercase; font-size: 14px;">Parte Frontal</div>
+                                <img src="${player.fotoCedulaFrente || defaultID}" style="width: 100%; height: 180px; object-fit: contain; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; padding: 5px;">
+                            </div>
+                            <div style="text-align: center; flex: 1;">
+                                <div style="font-weight: bold; color: #64748b; margin-bottom: 10px; text-transform: uppercase; font-size: 14px;">Parte Trasera</div>
+                                <img src="${player.fotoCedulaAtras || defaultID}" style="width: 100%; height: 180px; object-fit: contain; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; padding: 5px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(container);
+
+            try {
+                const canvas = await html2canvas(container, { scale: 2, useCORS: true, logging: false });
+                const imgData = canvas.toDataURL('image/png');
+                
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`Ficha_${player.nombre}_${player.apellido}.pdf`);
+                showToast('PDF generado correctamente', 'success');
+            } catch (error) {
+                console.error("Error al generar PDF:", error);
+                showToast('Hubo un error al generar el PDF', 'error');
+            } finally {
+                document.body.removeChild(container);
+            }
+        }
+
+        async function exportListPDF() {
+            const filteredPlayers = currentFilter === 'All' ? players : players.filter(p => p.categoria === currentFilter);
+            if (filteredPlayers.length === 0) {
+                showToast('No hay datos para exportar', 'error');
+                return;
+            }
+
+            showToast('Generando Lista PDF. Esto puede tomar unos segundos...', 'info');
+
+            const container = document.createElement('div');
+            container.style.width = '1122px'; 
+            container.style.padding = '40px';
+            container.style.backgroundColor = '#ffffff';
+            container.style.position = 'fixed';
+            container.style.left = '-9999px';
+            container.style.top = '0';
+            container.style.fontFamily = 'sans-serif';
+
+            const defaultPhoto = 'https://placehold.co/100x100/e2e8f0/64748b?text=Foto';
+
+            let rowsHtml = filteredPlayers.map((p, index) => `
+                <tr style="border-bottom: 1px solid #e2e8f0; background-color: ${index % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                    <td style="padding: 12px 8px; text-align: center;"><img src="${p.fotoJugador || defaultPhoto}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 50%; border: 1px solid #ccc;"></td>
+                    <td style="padding: 12px 8px; font-weight: bold; color: #1e293b;">${p.nombre} ${p.apellido}</td>
+                    <td style="padding: 12px 8px; color: #475569;">${p.cedula}</td>
+                    <td style="padding: 12px 8px; text-align: center;">${p.edad}</td>
+                    <td style="padding: 12px 8px; text-align: center;">
+                        <span style="background-color: #dbeafe; color: #1e3a8a; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${p.categoria}</span>
+                    </td>
+                    <td style="padding: 12px 8px; text-align: center;">
+                        ${p.pago ? '<span style="color:#15803d; font-weight:bold;">Sí</span>' : '<span style="color:#b91c1c; font-weight:bold;">No</span>'}
+                    </td>
+                    <td style="padding: 12px 8px; text-align: center;">
+                        <div style="display:flex; justify-content:center; gap:5px;">
+                            ${p.fotoCedulaFrente ? '<span style="color:green; font-size:12px;">Fr ✓</span>' : '-'}
+                            ${p.fotoCedulaAtras ? '<span style="color:green; font-size:12px;">At ✓</span>' : '-'}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            container.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h1 style="color: #1e3a8a; font-size: 28px; margin: 0; text-transform: uppercase;">CARA FC</h1>
+                    <h2 style="font-size: 20px; color: #64748b; margin: 5px 0;">Listado Oficial de Jugadores</h2>
+                    <div style="font-size: 16px; font-weight: bold; margin-top: 10px; color: #333;">Categoría: ${currentFilter === 'All' ? 'Todas' : currentFilter} | Total: ${filteredPlayers.length}</div>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                        <tr style="background-color: #1e3a8a; color: white; text-transform: uppercase;">
+                            <th style="padding: 12px 8px; width: 80px;">Foto</th>
+                            <th style="padding: 12px 8px; text-align: left;">Nombre Completo</th>
+                            <th style="padding: 12px 8px; text-align: left;">Cédula</th>
+                            <th style="padding: 12px 8px;">Edad</th>
+                            <th style="padding: 12px 8px;">Categoría</th>
+                            <th style="padding: 12px 8px;">Pago</th>
+                            <th style="padding: 12px 8px;">Docs.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+            `;
+            document.body.appendChild(container);
+
+            try {
+                const canvas = await html2canvas(container, { scale: 1.5, useCORS: true, logging: false });
+                const imgData = canvas.toDataURL('image/png');
+                
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('l', 'mm', 'a4'); 
+                
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+                
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                while (heightLeft > 0) {
+                    position -= pageHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                pdf.save(`Listado_CARA_FC_${currentFilter}.pdf`);
+                showToast('Lista exportada a PDF exitosamente', 'success');
+            } catch (error) {
+                console.error(error);
+                showToast('Error al exportar la lista a PDF', 'error');
+            } finally {
+                document.body.removeChild(container);
+            }
+        }
+
+        function exportListExcel() {
+            const filteredPlayers = currentFilter === 'All' ? players : players.filter(p => p.categoria === currentFilter);
+            if (filteredPlayers.length === 0) {
+                showToast('No hay datos para exportar', 'error');
+                return;
+            }
+
+            let tableHtml = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
+                        th { background-color: #1e3a8a; color: white; font-weight: bold; border: 1px solid #ddd; padding: 10px; }
+                        td { border: 1px solid #ddd; padding: 8px; vertical-align: middle; }
+                        .text-center { text-align: center; }
+                        .text-green { color: green; font-weight: bold; }
+                        .text-red { color: red; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <h2>Listado de Jugadores - CARA FC</h2>
+                    <p><b>Categoría:</b> ${currentFilter === 'All' ? 'Todas' : currentFilter} | <b>Total:</b> ${filteredPlayers.length}</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Foto</th>
+                                <th>Nombre</th>
+                                <th>Apellido</th>
+                                <th>Cédula</th>
+                                <th>Fecha Nacimiento</th>
+                                <th>Edad</th>
+                                <th>Categoría</th>
+                                <th>Estado de Pago</th>
+                                <th>Cédula Frente</th>
+                                <th>Cédula Atrás</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            const defaultThumb = 'https://placehold.co/60x60/e2e8f0/64748b?text=Sin+Img';
+
+            filteredPlayers.forEach(p => {
+                const pagoStatus = p.pago ? '<span class="text-green">PAGADO</span>' : '<span class="text-red">PENDIENTE</span>';
+                tableHtml += `
+                    <tr>
+                        <td class="text-center"><img src="${p.fotoJugador || defaultThumb}" width="60" height="60" style="object-fit:cover;"></td>
+                        <td>${p.nombre}</td>
+                        <td>${p.apellido}</td>
+                        <td>${p.cedula}</td>
+                        <td class="text-center">${p.fechaNacimiento}</td>
+                        <td class="text-center">${p.edad}</td>
+                        <td class="text-center">${p.categoria}</td>
+                        <td class="text-center">${pagoStatus}</td>
+                        <td class="text-center"><img src="${p.fotoCedulaFrente || defaultThumb}" width="90" height="60" style="object-fit:contain;"></td>
+                        <td class="text-center"><img src="${p.fotoCedulaAtras || defaultThumb}" width="90" height="60" style="object-fit:contain;"></td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `</tbody></table></body></html>`;
+
+            const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Jugadores_CARA_FC_${currentFilter}.xls`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('Excel generado exitosamente', 'success');
+        }
+        // --- CARGA AUTOMÁTICA DESDE GITHUB ---
+
+        // Configuración exacta de tu archivo en GitHub
+        const GITHUB_USER = 'jose57097408-cripto'; 
+        const GITHUB_REPO = 'CaraFC_Registros';
+        const GITHUB_BRANCH = 'main'; 
+        const GITHUB_FILE = 'CARAFC_Respaldo_20260723.json'; 
+
+        async function sincronizarDatosDeGitHub() {
+            // URL directa al archivo crudo (Raw)
+            const url = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${GITHUB_FILE}`;
+    
+            try {
+                const respuesta = await fetch(url);
+        
+                if (!respuesta.ok) {
+                    throw new Error('No se pudo descargar el archivo.');
+                }
+        
+                const datosImportados = await respuesta.json();
+        
+                // Reemplazar los datos locales con los de GitHub automáticamente
+                players = datosImportados;
+                checkPaymentResets(); // Verifica si los pagos expiraron en este nuevo mes
+                saveToLocalStorage(); // Guarda en el almacenamiento de tu navegador
+                renderPlayers();      // Actualiza las tarjetas visualmente
+        
+                showToast('Datos sincronizados con GitHub automáticamente', 'success');
+        
+            } catch (error) {
+                console.error("Error al sincronizar de GitHub:", error);
+                // Si no hay internet o falla GitHub, avisa que se están usando los datos guardados en la computadora
+                showToast('Cargando datos locales (Sin conexión a GitHub)', 'info');
+            }
+        }
+    </script>
+</body>
+</html>
